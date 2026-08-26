@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.claude/settings.local.json
+
+# Generated output, regenerate with `python3 perturbation_study.py`
+perturbation_results.csv
+perturbation_results.png
