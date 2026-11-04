@@ -15,7 +15,7 @@ as exp(mu*t) unconditionally -- keep mu small and qGlc/qGln low enough
 that consumption doesn't outrun the initial Glc/Gln pools over t_span.
 """
 
-from .base import ODESystemSpec
+from ode_solver.spec import ODESystemSpec
 
 
 def rhs(t, X, mu, qGlc, qGln, qLac, qAmm):

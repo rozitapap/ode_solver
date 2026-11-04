@@ -9,11 +9,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from data_generator import generate_dataset
 from models import MODELS
-from models.base import SimulationRequest
 from models.brain_heart import psp_constant, psp_profile
-from ODE_solver import solve_ode
+from ode_solver import SimulationRequest, generate_dataset, solve_ode
 
 BASELINE = Path(__file__).parent / "baseline"
 

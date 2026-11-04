@@ -19,7 +19,7 @@ change (dS+dI+dR+dD = 0). If you need N to vary independently of the
 initial condition, promote it to a parameter instead.
 """
 
-from .base import ODESystemSpec
+from ode_solver.spec import ODESystemSpec
 
 
 def rhs(t, X, beta, gamma, mu):

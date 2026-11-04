@@ -1,5 +1,7 @@
 __pycache__/
 .pytest_cache/
+*.egg-info/
+build/
 *.pyc
 .DS_Store
 .claude/settings.local.json

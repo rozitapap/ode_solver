@@ -6,7 +6,7 @@ Linear 5-species mass-action chain M1 -> M2 -> M3 -> M4 -> M5, each step
 first-order with rate k_i.
 """
 
-from .base import ODESystemSpec
+from ode_solver.spec import ODESystemSpec
 
 
 def rhs(t, y, k1, k2, k3, k4):

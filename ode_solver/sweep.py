@@ -3,7 +3,7 @@ Dataset Generator
 =============================
 
 Runs solve_ode() many times to build a synthetic dataset of trajectories
-for a range of rate parameters, for any ODESystemSpec (see models/) -- the
+for a range of rate parameters, for any ODESystemSpec -- the
 "digital twin" data source for downstream modeling or a future
 simulation chatbot.
 
@@ -27,7 +27,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from ODE_solver import solve_ode, validate_request
+from .solve import solve_ode, validate_request
 
 
 def generate_dataset(

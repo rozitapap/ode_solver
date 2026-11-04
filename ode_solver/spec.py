@@ -3,9 +3,6 @@ Shared ODE contract: how a system is defined, requested, and reported.
 
 Any new ODE system only needs to satisfy this contract to plug into the
 solver and everything built on it.
-
-This file is kept byte-identical in two repos until they share a package:
-ode_solver (models/base.py) and PINNSLearning (ode_agent/schema.py).
 """
 
 from dataclasses import dataclass, field

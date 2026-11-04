@@ -9,8 +9,10 @@ Each step is logged, and the run stops at the first failure.
 from dataclasses import dataclass, field
 from typing import Optional
 
-from models.base import SimulationRequest, SimulationResult
-from ODE_solver import analyze_result, plot_results, solve_ode, validate_request
+from .analysis import analyze_result
+from .plotting import plot_results
+from .solve import solve_ode, validate_request
+from .spec import SimulationRequest, SimulationResult
 
 
 @dataclass

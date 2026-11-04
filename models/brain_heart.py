@@ -12,7 +12,7 @@ initial-condition key "H0" (H at t=0); they live in different dicts.
 
 import numpy as np
 
-from .base import ODESystemSpec
+from ode_solver.spec import ODESystemSpec
 
 
 def rhs(t, y, Ra, Ca, dV, betaH, gamma, VH, deltaH, H0, alpha, asp, Psp):

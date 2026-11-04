@@ -1,18 +1,13 @@
 """
-Generic ODE Solver
-======================
-
-Validates, integrates, analyzes and plots any ODE system described by an
-ODESystemSpec (see models/base.py), using scipy.integrate.solve_ivp. Contains
-no knowledge of any specific system -- see models/ for those.
+Generic ODE solver: validates and integrates any ODE system described by an
+ODESystemSpec, using scipy.integrate.solve_ivp. Contains no knowledge of any
+specific system.
 """
-
-import os
 
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from models.base import SimulationResult
+from .spec import SimulationResult
 
 
 def validate_request(spec, request):
@@ -126,69 +121,3 @@ def solve_ode(spec, request):
             "defaulted_inputs": defaulted_inputs,
         },
     )
-
-
-def analyze_result(result, spec):
-    """
-    Compute summary statistics (peaks, finals) for every state.
-
-    A "_conservation" entry is added only for systems whose spec declares
-    conserved_total.
-    """
-    stats = {}
-    for name, series in result.trajectories.items():
-        peak_idx = int(np.argmax(series))
-        trough_idx = int(np.argmin(series))
-        stats[name] = {
-            "initial": float(series[0]),
-            "final": float(series[-1]),
-            "peak_value": float(series[peak_idx]),
-            "peak_time": float(result.t[peak_idx]),
-            "min_value": float(series[trough_idx]),
-            "min_time": float(result.t[trough_idx]),
-        }
-
-    if spec.conserved_total:
-        total_initial = sum(float(series[0]) for series in result.trajectories.values())
-        total_final = sum(float(series[-1]) for series in result.trajectories.values())
-        stats["_conservation"] = {
-            "total_initial": total_initial,
-            "total_final": total_final,
-            "abs_drift": abs(total_final - total_initial),
-        }
-    return stats
-
-
-def plot_results(result, spec, save_path=None, show=False):
-    """Plot each state trajectory on its own axis; optionally save and/or show it."""
-    import matplotlib.pyplot as plt
-
-    n = len(spec.state_names)
-    fig, axes = plt.subplots(n, 1, figsize=(6, 2.4 * n), sharex=True)
-    for ax, key in zip(axes, spec.state_names):
-        ax.plot(result.t, result.trajectories[key])
-        ax.set_ylabel(key)
-    axes[-1].set_xlabel("Time")
-    fig.tight_layout()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-        fig.savefig(save_path, dpi=150)
-    if show:
-        plt.show()
-    else:
-        plt.close(fig)
-    return save_path
-
-
-if __name__ == "__main__":
-    from models import MODELS
-
-    spec = MODELS["bioprocess"]
-    result = solve_ode(spec, spec.default_request())
-
-    print(f"Model: {spec.name}")
-    print("Final state at t =", result.t[-1])
-    for key in spec.state_names:
-        print(f"  {key}: {result.trajectories[key][-1]:.4f}")
-
-    plot_results(result, spec, show=True)

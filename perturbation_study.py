@@ -11,8 +11,8 @@ ODE system (see models/ for what's registered).
 
 import matplotlib.pyplot as plt
 
-from data_generator import generate_dataset
 from models import MODELS
+from ode_solver import generate_dataset
 
 MODEL_NAME = "bioprocess"
 spec = MODELS[MODEL_NAME]
