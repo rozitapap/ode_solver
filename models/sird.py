@@ -19,12 +19,10 @@ change (dS+dI+dR+dD = 0). If you need N to vary independently of the
 initial condition, promote it to a parameter instead.
 """
 
-import numpy as np
-
-from .base import ODEModel
+from .base import ODESystemSpec
 
 
-def rhs(X, t, beta, gamma, mu):
+def rhs(t, X, beta, gamma, mu):
     """RHS of the SIRD compartmental ODE system."""
     S, I, R, D = X
     N = S + I + R + D
@@ -37,16 +35,18 @@ def rhs(X, t, beta, gamma, mu):
     return [dSdt, dIdt, dRdt, dDdt]
 
 
-MODEL = ODEModel(
+MODEL = ODESystemSpec(
     name="sird",
-    state_keys=["S", "I", "R", "D"],
-    param_names=("beta", "gamma", "mu"),
+    state_names=["S", "I", "R", "D"],
+    param_names=["beta", "gamma", "mu"],
     rhs=rhs,
+    conserved_total=True,
     default_params={
         "beta": 0.3,
         "gamma": 0.1,
         "mu": 0.01,
     },
-    default_U_init=[990.0, 10.0, 0.0, 0.0],
-    default_t_pred=np.linspace(0, 160, 161),
+    default_initial_conditions={"S0": 990.0, "I0": 10.0, "R0": 0.0, "D0": 0.0},
+    default_t_span=(0, 160),
+    default_n_points=161,
 )

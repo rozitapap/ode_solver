@@ -1,7 +1,7 @@
 """
 ODE model registry.
 
-Add a new system by creating models/<name>.py with an ODEModel instance
+Add a new system by creating models/<name>.py with an ODESystemSpec instance
 named MODEL, then registering it below.
 """
 

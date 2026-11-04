@@ -12,15 +12,13 @@ Bioprocess ODE Model
 Rates (mu, qGlc, qGln, qLac, qAmm) are constant parameters rather than
 being predicted by a model. No substrate-limiting feedback, so VCD grows
 as exp(mu*t) unconditionally -- keep mu small and qGlc/qGln low enough
-that consumption doesn't outrun the initial Glc/Gln pools over t_pred.
+that consumption doesn't outrun the initial Glc/Gln pools over t_span.
 """
 
-import numpy as np
-
-from .base import ODEModel
+from .base import ODESystemSpec
 
 
-def rhs(X, t, mu, qGlc, qGln, qLac, qAmm):
+def rhs(t, X, mu, qGlc, qGln, qLac, qAmm):
     """RHS of the batch mass-balance ODE system."""
     VCD, Glc, Gln, Lac, Amm = X
 
@@ -33,10 +31,10 @@ def rhs(X, t, mu, qGlc, qGln, qLac, qAmm):
     return [dVCDdt, dGlcdt, dGlndt, dLacdt, dAmmdt]
 
 
-MODEL = ODEModel(
+MODEL = ODESystemSpec(
     name="bioprocess",
-    state_keys=["VCD", "Glc", "Gln", "Lac", "Amm"],
-    param_names=("mu", "qGlc", "qGln", "qLac", "qAmm"),
+    state_names=["VCD", "Glc", "Gln", "Lac", "Amm"],
+    param_names=["mu", "qGlc", "qGln", "qLac", "qAmm"],
     rhs=rhs,
     default_params={
         "mu": 0.02,
@@ -45,6 +43,7 @@ MODEL = ODEModel(
         "qLac": 0.01,
         "qAmm": 0.001,
     },
-    default_U_init=[0.5, 30.0, 4.0, 0.1, 0.1],
-    default_t_pred=np.linspace(0, 200, 201),
+    default_initial_conditions={"VCD0": 0.5, "Glc0": 30.0, "Gln0": 4.0, "Lac0": 0.1, "Amm0": 0.1},
+    default_t_span=(0, 200),
+    default_n_points=201,
 )
