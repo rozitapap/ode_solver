@@ -111,6 +111,11 @@ class ModelEntry:
         if problems:
             raise ValueError(f"Invalid catalog entry '{self.spec.name}': {problems}")
 
+    @property
+    def units(self) -> dict:
+        """Keyword arguments giving the plotting functions this model's units."""
+        return {"time_unit": self.time_unit, "state_units": dict(self.state_units)}
+
     def scenario(self, name: Optional[str] = None) -> Scenario:
         """Look up a scenario by name, or the default one."""
         name = name or self.default_scenario

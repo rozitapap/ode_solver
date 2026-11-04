@@ -8,6 +8,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -19,6 +20,7 @@ from ode_solver import (
     SimulationRequest,
     generate_dataset,
     plot_results,
+    plot_sweep,
     solve_ode,
     validate_request,
 )
@@ -164,13 +166,53 @@ def test_single_state_system_solves_and_sweeps():
     assert generate_dataset(DECAY, DECAY.default_request(), n_runs=2, seed=0)["success"].all()
 
 
-@pytest.mark.xfail(
-    raises=TypeError,
-    strict=True,
-    reason="plot_results assumes at least 2 states (plt.subplots returns a bare Axes)",
-)
 def test_single_state_system_plots(tmp_path):
-    plot_results(solve_ode(DECAY, DECAY.default_request()), DECAY, save_path=tmp_path / "plot.png")
+    path = tmp_path / "plot.png"
+    plot_results(solve_ode(DECAY, DECAY.default_request()), DECAY, save_path=path)
+    assert path.exists()
+
+
+def test_single_state_sweep_plots(tmp_path):
+    path = tmp_path / "plot.png"
+    df = generate_dataset(DECAY, DECAY.default_request(), n_runs=2, seed=0)
+    plot_sweep(df, DECAY, save_path=path)
+    assert path.exists()
+
+
+@pytest.fixture
+def open_figure(monkeypatch):
+    """Keep the figure open after plotting, so its axes can be inspected."""
+    monkeypatch.setattr(plt, "close", lambda *args: None)
+    return plt.gcf
+
+
+def test_axes_use_the_given_units_and_nothing_else(open_figure):
+    entry = CATALOG["sird"]
+    plot_results(solve_ode(entry.spec, entry.request()), entry.spec, **entry.units)
+    axes = open_figure().axes
+    assert [ax.get_ylabel() for ax in axes] == [f"{name} (people)" for name in "SIRD"]
+    assert axes[-1].get_xlabel() == "Time (day)"
+
+
+def test_axes_leave_out_units_that_arent_recorded(open_figure):
+    plot_results(solve_ode(DECAY, DECAY.default_request()), DECAY)
+    ax = open_figure().axes[0]
+    assert ax.get_ylabel() == "x"
+    assert ax.get_xlabel() == "Time"
+
+
+def test_negative_values_are_not_clipped(open_figure):
+    spec = ODESystemSpec(
+        name="oscillator",
+        state_names=["x", "v"],
+        param_names=["w"],
+        rhs=lambda t, y, w: [y[1], -w * w * y[0]],
+        default_params={"w": 1.0},
+        default_initial_conditions={"x0": 1.0, "v0": 0.0},
+        default_t_span=(0, 10),
+    )
+    plot_results(solve_ode(spec, spec.default_request()), spec)
+    assert open_figure().axes[0].get_ylim()[0] < -0.9
 
 
 def test_failed_integration_is_reported():

@@ -50,7 +50,7 @@ class Pipeline:
         if self.verbose:
             print(message)
 
-    def run(self, spec, request, plot_path=None, show_plot=False):
+    def run(self, spec, request, plot_path=None, show_plot=False, time_unit=None, state_units=None):
         run = PipelineRun(request=request)
 
         problems = validate_request(spec, request)
@@ -80,7 +80,14 @@ class Pipeline:
             self._log(run, f"[pipeline] conservation drift: {drift:.3e} ({rel_drift:.2%})")
         self._log(run, _summarize(spec.state_names, analysis))
 
-        run.plot_path = plot_results(result, spec, save_path=plot_path, show=show_plot)
+        run.plot_path = plot_results(
+            result,
+            spec,
+            save_path=plot_path,
+            show=show_plot,
+            time_unit=time_unit,
+            state_units=state_units,
+        )
         if run.plot_path:
             self._log(run, f"[pipeline] plot saved to {run.plot_path}")
 
