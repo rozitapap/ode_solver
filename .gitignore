@@ -6,6 +6,9 @@ build/
 .DS_Store
 .claude/settings.local.json
 
-# Generated output, regenerate with `python3 perturbation_study.py`
+# Generated output, regenerate with the scripts in experiments/
+outputs/
+
+# Older output from before experiments/ existed
 perturbation_results.csv
 perturbation_results.png
