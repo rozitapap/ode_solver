@@ -76,8 +76,8 @@ class ModelEntry:
     parameters: Sequence[Parameter]
     scenarios: Sequence[Scenario]
     default_scenario: str
-    time_unit: str
-    state_units: Mapping[str, str]
+    time_unit: Optional[str]  # None if it isn't recorded
+    state_units: Mapping[str, Optional[str]]  # one entry per state; None if it isn't recorded
     status: ModelStatus = ModelStatus.EXECUTABLE
     reference: Optional[Reference] = None  # None means the model isn't from a publication
     related_references: Sequence[Reference] = ()

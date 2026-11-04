@@ -1,7 +1,7 @@
 """
 Every registered model must run through the whole pipeline, and the pipeline
 must handle systems unlike the registered ones. A new model is covered
-automatically once it's in MODELS or CATALOG.
+automatically once it's in CATALOG.
 """
 
 import matplotlib
@@ -11,7 +11,6 @@ matplotlib.use("Agg")
 import numpy as np
 import pytest
 
-from models import MODELS
 from ode_catalog import CATALOG
 from ode_catalog.brain_heart.model import psp_constant, psp_profile
 from ode_solver import (
@@ -24,7 +23,7 @@ from ode_solver import (
     validate_request,
 )
 
-ALL_SPECS = {**MODELS, **{name: entry.spec for name, entry in CATALOG.items()}}
+ALL_SPECS = {name: entry.spec for name, entry in CATALOG.items()}
 SPECS = list(ALL_SPECS.values())
 IDS = list(ALL_SPECS)
 
@@ -227,7 +226,7 @@ def test_unknown_parameter_is_rejected():
 
 
 def test_param_names_order_does_not_change_the_result():
-    sird = MODELS["sird"]
+    sird = ALL_SPECS["sird"]
     reordered = ODESystemSpec("reordered", sird.state_names, ["mu", "gamma", "beta"], sird.rhs)
     expected = solve_ode(sird, sird.default_request())
     actual = solve_ode(reordered, sird.default_request())

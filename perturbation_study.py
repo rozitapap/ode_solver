@@ -6,22 +6,23 @@ each randomly scaled by +/-10%, then saves all trajectories + parameter
 values to a CSV and an overlay figure of all runs per state.
 
 Change MODEL_NAME below to run the same study against a different
-ODE system (see models/ for what's registered).
+ODE system (see ode_catalog/ for what's registered).
 """
 
 import matplotlib.pyplot as plt
 
-from models import MODELS
+from ode_catalog import CATALOG
 from ode_solver import generate_dataset
 
 MODEL_NAME = "bioprocess"
-spec = MODELS[MODEL_NAME]
+entry = CATALOG[MODEL_NAME]
+spec = entry.spec
 
 n_runs = 200
 
 df = generate_dataset(
     spec,
-    spec.default_request(),
+    entry.request(),
     n_runs=n_runs,
     mode="random",
     perturb_frac=0.1,

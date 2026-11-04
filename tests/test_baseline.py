@@ -9,38 +9,27 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from models import MODELS
 from ode_catalog import CATALOG
-from ode_solver import SimulationRequest, generate_dataset, solve_ode
+from ode_solver import generate_dataset, solve_ode
 
 BASELINE = Path(__file__).parent / "baseline"
 
-
-SPECS = {**MODELS, **{name: entry.spec for name, entry in CATALOG.items()}}
-
+# Baseline file -> (model, scenario)
 CASES = {
-    "bioprocess": ("bioprocess", MODELS["bioprocess"].default_request()),
-    "sird_population_1000": (
-        "sird",
-        SimulationRequest(
-            system_name="sird",
-            params={"beta": 0.3, "gamma": 0.1, "mu": 0.01},
-            initial_conditions={"S0": 990.0, "I0": 10.0, "R0": 0.0, "D0": 0.0},
-            t_span=(0, 160),
-            n_points=161,
-        ),
-    ),
-    "sird_population_1000000": ("sird", MODELS["sird"].default_request()),
-    "metabolite_pathway": ("metabolite_pathway", MODELS["metabolite_pathway"].default_request()),
-    "brain_heart_resting": ("brain_heart", CATALOG["brain_heart"].request("resting")),
-    "brain_heart_setpoint_step": ("brain_heart", CATALOG["brain_heart"].request("setpoint_step")),
+    "bioprocess": ("bioprocess", "batch_culture"),
+    "sird_population_1000": ("sird", "small_population"),
+    "sird_population_1000000": ("sird", "outbreak"),
+    "metabolite_pathway": ("metabolite_pathway", "from_m1"),
+    "brain_heart_resting": ("brain_heart", "resting"),
+    "brain_heart_setpoint_step": ("brain_heart", "setpoint_step"),
 }
 
 
 @pytest.mark.parametrize("name", CASES)
 def test_trajectories_match_baseline(name):
-    model_name, request = CASES[name]
-    result = solve_ode(SPECS[model_name], request)
+    model_name, scenario = CASES[name]
+    entry = CATALOG[model_name]
+    result = solve_ode(entry.spec, entry.request(scenario))
     assert result.success, result.message
 
     expected = pd.read_csv(BASELINE / f"{name}.csv")
@@ -51,8 +40,8 @@ def test_trajectories_match_baseline(name):
 
 
 def test_sweep_matches_baseline():
-    spec = MODELS["bioprocess"]
-    actual = generate_dataset(spec, spec.default_request(), n_runs=3, seed=0)
+    entry = CATALOG["bioprocess"]
+    actual = generate_dataset(entry.spec, entry.request(), n_runs=3, seed=0)
     expected = pd.read_csv(BASELINE / "sweep_bioprocess.csv")
     assert list(actual.columns) == list(expected.columns)
     assert actual["success"].all() and expected["success"].all()

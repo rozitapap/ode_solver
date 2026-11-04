@@ -23,7 +23,7 @@ SCENARIOS = [(entry, scenario.name) for entry in ENTRIES.values() for scenario i
 SCENARIO_IDS = [f"{entry.spec.name}-{name}" for entry, name in SCENARIOS]
 
 
-def test_engine_never_imports_the_catalog_or_models():
+def test_engine_never_imports_the_catalog():
     engine = Path(ode_solver.__file__).parent
     for path in engine.glob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
@@ -34,7 +34,7 @@ def test_engine_never_imports_the_catalog_or_models():
             else:
                 continue
             for module in modules:
-                assert module.split(".")[0] not in {"ode_catalog", "models"}, f"{path.name}: {module}"
+                assert module.split(".")[0] != "ode_catalog", f"{path.name}: {module}"
 
 
 @pytest.mark.parametrize("key", list(CATALOG))
