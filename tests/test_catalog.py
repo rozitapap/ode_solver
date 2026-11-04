@@ -13,9 +13,11 @@ matplotlib.use("Agg")
 
 import pytest
 
+import ode_catalog
 import ode_solver
 from ode_catalog import CATALOG, ModelEntry, ModelStatus, Parameter, Scenario
 from ode_catalog._template.model import ENTRY as TEMPLATE
+from ode_catalog.index import INDEX_PATH, render_index
 from ode_catalog.validation import assert_agrees, rk4_fixed_step
 from ode_solver import ODESystemSpec, solve_ode, validate_request
 
@@ -93,6 +95,18 @@ def test_assert_agrees_uses_the_relative_error():
     assert_agrees([100.0, 200.0], [100.0, 200.001], 1e-5)
     with pytest.raises(AssertionError, match="relative error"):
         assert_agrees([100.0, 200.0], [100.0, 201.0], 1e-5, label="x")
+
+
+def test_index_is_up_to_date():
+    assert INDEX_PATH.read_text(encoding="utf-8") == render_index(), (
+        "Run python3 -m ode_catalog.index"
+    )
+
+
+@pytest.mark.parametrize("entry", CATALOG.values(), ids=list(CATALOG))
+def test_readme_status_matches_the_entry(entry):
+    readme = Path(ode_catalog.__file__).parent / entry.spec.name / "README.md"
+    assert f"**Status:** {entry.status.value}" in readme.read_text(encoding="utf-8")
 
 
 def test_unknown_scenario_lists_the_available_ones():

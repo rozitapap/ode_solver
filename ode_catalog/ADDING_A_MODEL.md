@@ -3,7 +3,8 @@
 1. Copy `_template/` to `ode_catalog/<model_name>/`.
 2. Replace the equations, parameters, scenarios and README with your model's.
 3. Add it to `CATALOG` in `ode_catalog/__init__.py`.
-4. Run `python3 -m pytest`. The contract tests pick up the new model automatically.
+4. Run `python3 -m ode_catalog.index` to update the catalog index.
+5. Run `python3 -m pytest`. The contract tests pick up the new model automatically.
 
 ## Checklist
 
