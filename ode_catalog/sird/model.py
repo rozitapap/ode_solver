@@ -83,6 +83,9 @@ ENTRY = ModelEntry(
     default_scenario="outbreak",
     time_unit="day",
     state_units={"S": "people", "I": "people", "R": "people", "D": "people"},
-    status=ModelStatus.EXECUTABLE,
+    status=ModelStatus.NUMERICALLY_VERIFIED,
+    evidence=(
+        "Matches the exact S-versus-removed and D-versus-R relations, and a separate RK4 implementation, within 1e-5 relative error."
+    ),
     reference=None,
 )

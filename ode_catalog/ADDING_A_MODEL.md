@@ -29,7 +29,7 @@
 
 ## Choosing a status
 
-Each status needs evidence in `test_validation.py` or the contract tests. Start at `EXECUTABLE`.
+Each status needs evidence in `test_validation.py` or the contract tests. Start at `EXECUTABLE`, and summarize what supports any higher status in the entry's `evidence` field. A conservation check alone doesn't meet the definition of numerically verified, because it isn't an independent implementation or a trusted reference.
 
 | Status | Definition | Evidence |
 |---|---|---|

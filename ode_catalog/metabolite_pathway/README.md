@@ -1,6 +1,6 @@
 # Linear metabolite pathway
 
-**Status:** see `model.py`
+**Status:** numerically verified
 
 **Source:** not from a publication. The rate constants are illustrative, and no units are recorded for them.
 
@@ -24,4 +24,4 @@ dM5/dt = k4 * M4
 Not applicable.
 
 ## Validation
-See `test_validation.py`.
+**Numerically verified.** The solver matches the exact Bateman solution within a relative error of 1e-5, and different solver methods agree within the same tolerance. See `test_validation.py`.

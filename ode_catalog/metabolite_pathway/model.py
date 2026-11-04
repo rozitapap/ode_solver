@@ -69,6 +69,9 @@ ENTRY = ModelEntry(
     default_scenario="from_m1",
     time_unit=None,
     state_units={"M1": None, "M2": None, "M3": None, "M4": None, "M5": None},
-    status=ModelStatus.EXECUTABLE,
+    status=ModelStatus.NUMERICALLY_VERIFIED,
+    evidence=(
+        "Matches the exact Bateman solution within 1e-5 relative error."
+    ),
     reference=None,
 )

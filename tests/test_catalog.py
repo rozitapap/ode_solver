@@ -4,6 +4,7 @@ engine must stay independent of the catalog.
 """
 
 import ast
+import dataclasses
 from pathlib import Path
 
 import matplotlib
@@ -15,6 +16,7 @@ import pytest
 import ode_solver
 from ode_catalog import CATALOG, ModelEntry, ModelStatus, Parameter, Scenario
 from ode_catalog._template.model import ENTRY as TEMPLATE
+from ode_catalog.validation import assert_agrees, rk4_fixed_step
 from ode_solver import ODESystemSpec, solve_ode, validate_request
 
 ENTRIES = {**CATALOG, "template": TEMPLATE}
@@ -68,6 +70,31 @@ def test_scenarios_run(entry, name):
     assert len(result.t) == request.n_points
 
 
+@pytest.mark.parametrize("method", ["DOP853", "Radau", "LSODA"])
+@pytest.mark.parametrize("entry, name", SCENARIOS, ids=SCENARIO_IDS)
+def test_solver_methods_agree(entry, name, method):
+    request = entry.request(name)
+    expected = solve_ode(entry.spec, request)
+    actual = solve_ode(entry.spec, dataclasses.replace(request, method=method))
+    assert actual.success, actual.message
+    for state in entry.spec.state_names:
+        assert_agrees(actual.trajectories[state], expected.trajectories[state], 1e-5, label=state)
+
+
+def test_rk4_has_fourth_order_accuracy():
+    t = [0.0, 1.0]
+    exact = 2.718281828459045
+    coarse = abs(rk4_fixed_step(lambda t, y: [y[0]], [1.0], t, substeps=10)[-1, 0] - exact)
+    fine = abs(rk4_fixed_step(lambda t, y: [y[0]], [1.0], t, substeps=20)[-1, 0] - exact)
+    assert coarse / fine == pytest.approx(16, rel=0.05)
+
+
+def test_assert_agrees_uses_the_relative_error():
+    assert_agrees([100.0, 200.0], [100.0, 200.001], 1e-5)
+    with pytest.raises(AssertionError, match="relative error"):
+        assert_agrees([100.0, 200.0], [100.0, 201.0], 1e-5, label="x")
+
+
 def test_unknown_scenario_lists_the_available_ones():
     with pytest.raises(KeyError, match="base_case"):
         TEMPLATE.request("typo")
@@ -106,7 +133,8 @@ def test_status_names_match_the_biomodels_terms():
         ({"state_units": {"A": "mol"}}, "state_units"),
         ({"default_scenario": "typo"}, "isn't a scenario"),
         ({"scenarios": [TEMPLATE.scenarios[0]] * 2}, "duplicate scenario"),
-        ({"status": ModelStatus.SCIENTIFICALLY_REPRODUCED}, "needs a reference"),
+        ({"status": ModelStatus.NUMERICALLY_VERIFIED}, "needs evidence"),
+        ({"status": ModelStatus.SCIENTIFICALLY_REPRODUCED, "evidence": "x"}, "needs a reference"),
     ],
 )
 def test_invalid_entries_are_rejected(overrides, message):

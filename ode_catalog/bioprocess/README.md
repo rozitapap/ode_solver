@@ -1,6 +1,6 @@
 # Batch cell-culture kinetics
 
-**Status:** see `model.py`
+**Status:** numerically verified
 
 **Source:** none is recorded. Add a citation here and in `model.py` if these values came from a publication. State and parameter units aren't recorded either. Hours comes only from the time label on the model's earlier plots.
 
@@ -24,4 +24,4 @@ dAmm/dt = qAmm * VCD
 Not applicable.
 
 ## Validation
-See `test_validation.py`.
+**Numerically verified.** The solver matches the exact closed-form solution within a relative error of 1e-5, and different solver methods agree within the same tolerance. This says the equations are solved correctly, not that they describe a real culture. See `test_validation.py`.

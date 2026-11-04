@@ -66,6 +66,9 @@ ENTRY = ModelEntry(
     default_scenario="batch_culture",
     time_unit="h",
     state_units={"VCD": None, "Glc": None, "Gln": None, "Lac": None, "Amm": None},
-    status=ModelStatus.EXECUTABLE,
+    status=ModelStatus.NUMERICALLY_VERIFIED,
+    evidence=(
+        "Matches the exact closed-form solution within 1e-5 relative error."
+    ),
     reference=None,
 )

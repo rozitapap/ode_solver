@@ -1,6 +1,6 @@
 # Autonomic cardiac regulation (delay-free baroreflex model)
 
-**Status:** executable
+**Status:** numerically verified
 
 **Source:** S. N. Sadoun, G. A. D'Inverno, A. Boutin, F. Cottin, and T.-M. Laleg-Kirati, "Physics-Informed Neural Estimation of State and Unknown Input in Autonomic Cardiac Dynamics with Left-Invertibility Constraints," 2026 European Control Conference (ECC), Reykjavík, Iceland, July 7-10, 2026, pp. 1795-1800.
 
@@ -37,9 +37,12 @@ The parameter values are from Table I and are recorded with their sources in `mo
 - `rhs` agrees with a separate transcription of Eqs. (3) and (4).
 - Simulated trajectories satisfy the paper's algebraic relation, Eq. (13).
 
-These checks confirm the equations were entered correctly, but they aren't a comparison of simulation results, so the status stays **executable**.
+- Results agree with a separate fixed-step RK4 implementation of Eqs. (3) and (4), within a relative error of 1e-5, in both scenarios.
+- Different solver methods agree within the same tolerance.
 
-Reaching **scientifically reproduced** needs a documented result to compare against, and that isn't straightforward with this paper:
+That supports **numerically verified**, with one caveat: both implementations were written in this project. They share no integrator and were typed separately, but an error in reading the paper could affect both. An external implementation would be stronger evidence.
+
+**Scientifically reproduced** needs a documented result to compare against, and that isn't straightforward with this paper:
 - Fig. 3 shows neural-network estimates from the PASS dataset, not a forward simulation with a known input.
 - The paper states there's no ground truth for P and Psp.
 

@@ -134,7 +134,10 @@ ENTRY = ModelEntry(
     default_scenario="resting",
     time_unit="s",
     state_units={"H": "s^-1", "P": "mmHg"},
-    status=ModelStatus.EXECUTABLE,
+    status=ModelStatus.NUMERICALLY_VERIFIED,
+    evidence=(
+        "Matches a separate RK4 implementation of Eqs. (3)-(4), typed separately from model.py, within 1e-5 relative error. Both were written in this project, so this doesn't replace an external implementation."
+    ),
     reference=Reference(
         citation=(
             "S. N. Sadoun, G. A. D'Inverno, A. Boutin, F. Cottin, and T.-M. Laleg-Kirati, "

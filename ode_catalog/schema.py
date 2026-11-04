@@ -81,6 +81,7 @@ class ModelEntry:
     status: ModelStatus = ModelStatus.EXECUTABLE
     reference: Optional[Reference] = None  # None means the model isn't from a publication
     related_references: Sequence[Reference] = ()
+    evidence: str = ""  # what supports a status above executable, and its tolerance
 
     def __post_init__(self):
         problems = []
@@ -100,6 +101,9 @@ class ModelEntry:
             problems.append(f"duplicate scenario names: {scenario_names}")
         if self.default_scenario not in scenario_names:
             problems.append(f"default_scenario '{self.default_scenario}' isn't a scenario")
+
+        if self.status is not ModelStatus.EXECUTABLE and not self.evidence:
+            problems.append(f"status '{self.status.value}' needs evidence")
 
         if self.status is ModelStatus.SCIENTIFICALLY_REPRODUCED and self.reference is None:
             problems.append("a scientifically reproduced model needs a reference")

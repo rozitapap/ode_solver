@@ -1,6 +1,6 @@
 # SIRD epidemic model
 
-**Status:** see `model.py`
+**Status:** numerically verified
 
 **Source:** not from a publication. The parameter values are loosely representative of an early-outbreak respiratory illness, and aren't fitted to data.
 
@@ -25,4 +25,4 @@ dD/dt = mu * I
 Not applicable.
 
 ## Validation
-See `test_validation.py`.
+**Numerically verified.** Within a relative error of 1e-5, the solver matches the exact relations `S = S0 * exp(-(beta/N)/(gamma+mu) * removed)` and `D/R = mu/gamma`, conserves the total population, and agrees with a separate fixed-step RK4 implementation. Different solver methods agree within the same tolerance. This says the equations are solved correctly, not that they describe a real outbreak. See `test_validation.py`.
