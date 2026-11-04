@@ -36,7 +36,6 @@ The parameter values are from Table I and are recorded with their sources in `mo
 `test_validation.py` checks that:
 - `rhs` agrees with a separate transcription of Eqs. (3) and (4).
 - Simulated trajectories satisfy the paper's algebraic relation, Eq. (13).
-
 - Results agree with a separate fixed-step RK4 implementation of Eqs. (3) and (4), within a relative error of 1e-5, in both scenarios.
 - Different solver methods agree within the same tolerance.
 

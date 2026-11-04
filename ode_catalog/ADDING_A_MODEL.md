@@ -38,3 +38,35 @@ Each status needs evidence in `test_validation.py` or the contract tests. Start 
 | `SCIENTIFICALLY_REPRODUCED` | Simulation reproduces a documented, published result | A test comparing against that result, and a person's review of the overlay |
 
 These definitions come from BioModels' empirical quality control findings. Status records validation only. Whether a model comes from a publication is recorded separately by `reference`.
+
+## Comparing against a published figure
+
+Scientifically reproduced needs a documented result from a forward simulation with known inputs. An estimate fitted to measured data isn't a suitable target, because the simulation can't be run under the same conditions.
+
+1. Digitize the curve with a tool like WebPlotDigitizer, then do it again from scratch. Two people is better.
+2. Save each attempt in `reference_data/<curve_name>/` as `run1.csv` and `run2.csv`, with columns `x` and `y` in the figure's units.
+3. Add `metadata.json` to the same folder:
+
+   ```json
+   {
+     "paper": "Short citation",
+     "figure": "Fig. 2, top panel",
+     "scenario": "name_of_the_matching_scenario",
+     "state": "P",
+     "x_unit": "s",
+     "y_unit": "mmHg",
+     "x_scale": 1.0,
+     "y_scale": 1.0,
+     "tool": "WebPlotDigitizer",
+     "digitized_by": ["Name", "Name"],
+     "overlay_reviewed_by": null
+   }
+   ```
+
+   `x_scale` and `y_scale` convert the figure's units to the model's, for example `0.016667` from beats/min to beats/s.
+4. In `test_validation.py`, use `load_reference_curve` and `compare_to_curve` from `ode_catalog.validation`. The comparison covers the overall curve, peak height, peak time and final value. Its tolerance comes from how much your two digitizing runs differ.
+5. Generate an overlay with `save_overlay`. A person then checks that it's the right figure and conditions, and records their name in `overlay_reviewed_by`.
+6. Only then set the status to `SCIENTIFICALLY_REPRODUCED`, and summarize the comparison in `evidence`. The test should assert both `comparison.passed` and `curve.reviewed_by`.
+
+If the comparison fails, the cause could be the paper, the digitizing or the code, so check all three before changing anything.
+
