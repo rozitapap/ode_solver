@@ -13,4 +13,7 @@ dependencies = ["numpy", "scipy", "pandas", "matplotlib"]
 test = ["pytest"]
 
 [tool.setuptools.packages.find]
-include = ["ode_solver*"]
+include = ["ode_solver*", "ode_catalog*"]
+
+[tool.setuptools.package-data]
+ode_catalog = ["*.md", "*/*.md", "*/reference_data/*"]

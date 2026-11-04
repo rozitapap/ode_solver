@@ -1,0 +1,137 @@
+"""
+Every catalog entry must be complete and every scenario runnable, and the
+engine must stay independent of the catalog.
+"""
+
+import ast
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import pytest
+
+import ode_solver
+from ode_catalog import CATALOG, ModelEntry, ModelStatus, Parameter, Scenario
+from ode_catalog._template.model import ENTRY as TEMPLATE
+from ode_solver import ODESystemSpec, solve_ode, validate_request
+
+ENTRIES = {**CATALOG, "template": TEMPLATE}
+IDS = list(ENTRIES)
+SCENARIOS = [(entry, scenario.name) for entry in ENTRIES.values() for scenario in entry.scenarios]
+SCENARIO_IDS = [f"{entry.spec.name}-{name}" for entry, name in SCENARIOS]
+
+
+def test_engine_never_imports_the_catalog_or_models():
+    engine = Path(ode_solver.__file__).parent
+    for path in engine.glob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                modules = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                modules = [node.module]
+            else:
+                continue
+            for module in modules:
+                assert module.split(".")[0] not in {"ode_catalog", "models"}, f"{path.name}: {module}"
+
+
+@pytest.mark.parametrize("key", list(CATALOG))
+def test_registry_key_matches_spec_name(key):
+    assert CATALOG[key].spec.name == key
+
+
+@pytest.mark.parametrize("entry", ENTRIES.values(), ids=IDS)
+def test_parameters_are_documented(entry):
+    for parameter in entry.parameters:
+        assert parameter.description, parameter.name
+        if entry.reference is not None:
+            assert parameter.source, parameter.name
+
+
+@pytest.mark.parametrize("entry", ENTRIES.values(), ids=IDS)
+def test_default_scenario_matches_the_spec_defaults(entry):
+    scenario = entry.scenario()
+    assert dict(scenario.initial_conditions) == dict(entry.spec.default_initial_conditions)
+    assert scenario.t_span == entry.spec.default_t_span
+    assert scenario.n_points == entry.spec.default_n_points
+    assert dict(scenario.inputs) == dict(entry.spec.default_inputs)
+
+
+@pytest.mark.parametrize("entry, name", SCENARIOS, ids=SCENARIO_IDS)
+def test_scenarios_run(entry, name):
+    request = entry.request(name)
+    assert validate_request(entry.spec, request) == []
+    result = solve_ode(entry.spec, request)
+    assert result.success, result.message
+    assert len(result.t) == request.n_points
+
+
+def test_unknown_scenario_lists_the_available_ones():
+    with pytest.raises(KeyError, match="base_case"):
+        TEMPLATE.request("typo")
+
+
+def make_entry(**overrides):
+    fields = {
+        "spec": TEMPLATE.spec,
+        "title": "Test",
+        "parameters": TEMPLATE.parameters,
+        "scenarios": TEMPLATE.scenarios,
+        "default_scenario": "base_case",
+        "time_unit": "s",
+        "state_units": TEMPLATE.state_units,
+    }
+    return ModelEntry(**{**fields, **overrides})
+
+
+def test_valid_entry_is_accepted():
+    assert make_entry().status is ModelStatus.EXECUTABLE
+
+
+def test_status_names_match_the_biomodels_terms():
+    assert [status.value for status in ModelStatus] == [
+        "executable",
+        "numerically verified",
+        "scientifically reproduced",
+    ]
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"parameters": []}, "don't match spec.param_names"),
+        ({"parameters": [Parameter("k", 99.0, description="x")]}, "don't match spec.default_params"),
+        ({"state_units": {"A": "mol"}}, "state_units"),
+        ({"default_scenario": "typo"}, "isn't a scenario"),
+        ({"scenarios": [TEMPLATE.scenarios[0]] * 2}, "duplicate scenario"),
+        ({"status": ModelStatus.SCIENTIFICALLY_REPRODUCED}, "needs a reference"),
+    ],
+)
+def test_invalid_entries_are_rejected(overrides, message):
+    with pytest.raises(ValueError, match=message):
+        make_entry(**overrides)
+
+
+def test_scenario_param_overrides_apply():
+    spec = ODESystemSpec(
+        name="override",
+        state_names=["x"],
+        param_names=["k"],
+        rhs=lambda t, y, k: [-k * y[0]],
+        default_params={"k": 1.0},
+    )
+    entry = ModelEntry(
+        spec=spec,
+        title="Override",
+        parameters=[Parameter("k", 1.0, description="rate")],
+        scenarios=[
+            Scenario("fast", "Faster rate.", {"x0": 1.0}, (0, 1), param_overrides={"k": 5.0}),
+        ],
+        default_scenario="fast",
+        time_unit="s",
+        state_units={"x": "mol"},
+    )
+    assert entry.request().params == {"k": 5.0}
+    assert spec.default_params == {"k": 1.0}
