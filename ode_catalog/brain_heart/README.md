@@ -23,12 +23,12 @@ dP/dt = -P / (Ra * (1 + alpha * Ts) * Ca) + H * dV / Ca
 The parameter values are from Table I and are recorded with their sources in `model.py`.
 
 ## Assumptions and limitations
-- This is the delay-free version of Ottesen's 1997 model. The reference notes that the delay is responsible for certain physiological oscillations (Mayer waves), so this model doesn't produce them.
+- The reference describes this as the delay-free version of Ottesen's 1997 model, and notes that the delay is responsible for certain physiological oscillations (Mayer waves). This model has no delay, so it doesn't produce them.
 - Parameters are nominal values, not fitted to an individual.
 
 ## Differences from the paper
 - **Time units:** this implementation uses seconds throughout, so H is in beats/s and `H0 = 100/60` instead of Table I's 100 min^-1.
-- **Printed units for `Ra` and `Ca`:** Table I prints `mmHg·g·ml^-1` and `mmHg·g^-1`, but Eq. (4) is only dimensionally consistent with `mmHg·s·ml^-1` and `ml·mmHg^-1`. `model.py` records them as printed, with a note. Check them against Ottesen (1997).
+- **Printed units:** Table I's units for `Ra`, `Ca` and `VH` don't fit the equations. They need `mmHg·s·ml^-1`, `ml·mmHg^-1` and `s^-2`, which are the units Ottesen (1997) gives for the equivalent parameters. `model.py` records them as printed, with notes.
 - **`deltaH`:** Table I calls it a relaxation time, but its unit and role are those of a rate.
 - **Scenarios aren't from the paper:** the paper estimates Psp from data, so `resting` and `setpoint_step`, including their initial conditions, are our own. In `resting`, P settles from 90 to about 85.7 mmHg, so the first 10 s or so are a transient.
 
@@ -45,4 +45,18 @@ That supports **numerically verified**, with one caveat: both implementations we
 - Fig. 3 shows neural-network estimates from the PASS dataset, not a forward simulation with a known input.
 - The paper states there's no ground truth for P and Psp.
 
-Options are to use a forward simulation published in Ottesen (1997) or Ataee et al. (2010), or to reproduce Fig. 3 by rerunning the estimator on the PASS data.
+Ottesen (1997) doesn't provide a usable target either, because it's a different model:
+
+| | This model | Ottesen (1997) |
+|---|---|---|
+| States | H, P | Pa, Pv, H |
+| Delay | None | In the sympathetic tone, and needed for Figs. 6 and 7 |
+| Tones | Logistic, with set-point input Psp(t) | Hill functions; the set-point follows from the parameters |
+| Relaxation term `deltaH * (H0 - H)` | Yes | No |
+| Sympathetic effect on resistance | Yes (`alpha`) | No |
+| Stroke volume | Constant, 50 ml | 67.9 ml at rest, and varies in Fig. 8 with a function the paper doesn't specify |
+| Damping `gamma` | 0.2 | 0 |
+
+Its figures therefore can't be used to validate this model, even though `betaH`, `VH` and `Ca` share its values.
+
+Remaining options are a forward simulation in Ataee et al. (2010), which hasn't been checked yet, or reproducing Fig. 3 by rerunning the estimator on the PASS data.

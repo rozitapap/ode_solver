@@ -60,16 +60,28 @@ def psp_profile(t):
 PARAMETERS = [
     Parameter(
         "Ra", 0.6, unit="mmHg·g·ml^-1", description="minimum arterial resistance", source="Table I",
-        note="Unit as printed. Eq. (4) is only dimensionally consistent with mmHg·s·ml^-1.",
+        note=(
+            "Unit as printed. Eq. (4) needs mmHg·s·ml^-1, the unit Ottesen (1997) gives for "
+            "resistance. Ottesen's peripheral resistance is 1.05, not 0.6."
+        ),
     ),
     Parameter(
         "Ca", 1.55, unit="mmHg·g^-1", description="arterial compliance", source="Table I",
-        note="Unit as printed. Eq. (4) is only dimensionally consistent with ml·mmHg^-1.",
+        note="Unit as printed. Eq. (4) needs ml·mmHg^-1, and Ottesen (1997) gives 1.55 ml/mmHg.",
     ),
-    Parameter("dV", 50, unit="ml", description="stroke volume", source="Table I"),
+    Parameter(
+        "dV", 50, unit="ml", description="stroke volume", source="Table I",
+        note="Ottesen (1997) uses 67.9 ml at rest.",
+    ),
     Parameter("betaH", 0.84, unit="s^-2", description="sympathetic control of HR", source="Table I"),
-    Parameter("gamma", 0.2, description="parasympathetic damping of betaH", source="Table I"),
-    Parameter("VH", 1.17, unit="s^-1", description="parasympathetic control of HR", source="Table I"),
+    Parameter(
+        "gamma", 0.2, description="parasympathetic damping of betaH", source="Table I",
+        note="Ottesen (1997) uses 0 for the equivalent parameter.",
+    ),
+    Parameter(
+        "VH", 1.17, unit="s^-1", description="parasympathetic control of HR", source="Table I",
+        note="Unit as printed. Eq. (3) needs s^-2, and Ottesen (1997) gives 1.17 sec^-2.",
+    ),
     Parameter(
         "deltaH", 1.7, unit="s^-1", description="relaxation time", source="Table I",
         note="Table I calls this a time, but its unit and its role in Eq. (3) are those of a rate.",
@@ -150,9 +162,12 @@ ENTRY = ModelEntry(
         Reference(
             citation=(
                 'J. T. Ottesen, "Modelling of the baroreflex-feedback mechanism with '
-                'time-delay," Journal of Mathematical Biology, vol. 36, no. 1, 1997.'
+                'time-delay," Journal of Mathematical Biology, vol. 36, pp. 41-63, 1997.'
             ),
-            note="Origin of the model, with a delay. Cited as reference [7]; not yet checked directly.",
+            note=(
+                "Cited as the model's origin, reference [7]. Checked directly: it's a related "
+                "three-state delay model, not this model with the delay removed. See README.md."
+            ),
         ),
         Reference(
             citation=(

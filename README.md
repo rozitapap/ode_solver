@@ -14,7 +14,7 @@ pip install -e ".[test]"
 
 This installs `numpy`, `scipy`, `pandas` and `matplotlib`, plus `pytest` for the tests.
 
-To use it from another project, once the `v0.1.0` tag has been pushed:
+To use it from another project:
 
 ```bash
 pip install "ode-solver @ git+https://github.com/rozitapap/ode_solver.git@v0.1.0"
