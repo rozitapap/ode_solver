@@ -13,8 +13,10 @@ import pytest
 
 from data_generator import generate_dataset
 from models import MODELS
-from models.base import ODESystemSpec
+from models.base import ODESystemSpec, SimulationRequest
+from models.brain_heart import psp_constant, psp_profile
 from ODE_solver import plot_results, solve_ode, validate_request
+from pipeline import Pipeline
 
 SPECS = list(MODELS.values())
 IDS = list(MODELS)
@@ -54,6 +56,23 @@ BLOWUP = ODESystemSpec(
 )
 
 
+def glucose_insulin_rhs(t, y, k):
+    S, I, _ = y
+    return [-k * S * I, 0.1 * S - 0.2 * I, 0.0]
+
+
+# Its state names collide with epidemic compartments, but it isn't an epidemic.
+LOOKS_EPIDEMIC = ODESystemSpec(
+    name="looks_epidemic",
+    state_names=["S", "I", "D"],
+    param_names=["k"],
+    rhs=glucose_insulin_rhs,
+    default_params={"k": 0.01},
+    default_initial_conditions={"S0": 100.0, "I0": 10.0, "D0": 1.0},
+    default_t_span=(0, 50),
+)
+
+
 @pytest.mark.parametrize("key, spec", zip(IDS, SPECS), ids=IDS)
 def test_registry_key_matches_spec_name(key, spec):
     assert key == spec.name
@@ -68,7 +87,8 @@ def test_default_request_is_valid(spec):
 def test_rhs_returns_one_derivative_per_state(spec):
     request = spec.default_request()
     y0 = [request.initial_conditions[name + "0"] for name in spec.state_names]
-    assert len(spec.rhs(request.t_span[0], y0, **request.params)) == len(spec.state_names)
+    derivatives = spec.rhs(request.t_span[0], y0, **request.params, **request.inputs)
+    assert len(derivatives) == len(spec.state_names)
 
 
 @pytest.mark.parametrize("spec", SPECS, ids=IDS)
@@ -107,6 +127,31 @@ def test_plots_and_saves(spec, tmp_path):
     assert path.exists()
 
 
+@pytest.mark.parametrize("spec", SPECS, ids=IDS)
+def test_pipeline_runs_end_to_end(spec, tmp_path):
+    plot_path = tmp_path / "plot.png"
+    run = Pipeline(verbose=False).run(spec, spec.default_request(), plot_path=str(plot_path))
+    assert run.ok, run.logs
+    assert plot_path.exists()
+    for state in spec.state_names:
+        assert state in run.analysis
+        assert any(f"- {state}:" in line for log in run.logs for line in log.splitlines())
+
+
+@pytest.mark.parametrize("spec", SPECS, ids=IDS)
+def test_drift_is_reported_only_when_declared(spec):
+    run = Pipeline(verbose=False).run(spec, spec.default_request())
+    assert ("_conservation" in run.analysis) == spec.conserved_total
+    assert any("drift" in line for line in run.logs) == spec.conserved_total
+
+
+def test_state_names_do_not_trigger_domain_language():
+    run = Pipeline(verbose=False).run(LOOKS_EPIDEMIC, LOOKS_EPIDEMIC.default_request())
+    logs = "\n".join(run.logs).lower()
+    for word in ("infection", "susceptible", "deaths", "population"):
+        assert word not in logs
+
+
 def test_single_state_system_solves_and_sweeps():
     result = solve_ode(DECAY, DECAY.default_request())
     assert result.trajectories["x"][-1] == pytest.approx(np.exp(-1.0), rel=1e-6)
@@ -124,6 +169,9 @@ def test_single_state_system_plots(tmp_path):
 
 def test_failed_integration_is_reported():
     assert not solve_ode(BLOWUP, BLOWUP.default_request()).success
+    run = Pipeline(verbose=False).run(BLOWUP, BLOWUP.default_request())
+    assert not run.ok
+    assert run.analysis is None
 
 
 def test_failed_runs_are_flagged_in_the_dataset():
@@ -138,9 +186,8 @@ def test_run_with_no_points_still_appears_in_the_dataset():
         return [np.nan]
 
     spec = ODESystemSpec("nan", ["x"], ["k"], nan_rhs)
-    request = DECAY.default_request()
     with pytest.warns(UserWarning):
-        df = generate_dataset(spec, request, n_runs=2, seed=0)
+        df = generate_dataset(spec, DECAY.default_request(), n_runs=2, seed=0)
     assert df["run"].nunique() == 2
     assert not df["success"].any()
 
@@ -169,6 +216,7 @@ def test_unknown_parameter_is_rejected():
     assert any("typo" in problem for problem in validate_request(DECAY, request))
     with pytest.raises(ValueError, match="typo"):
         generate_dataset(DECAY, request, n_runs=1)
+    assert not Pipeline(verbose=False).run(DECAY, request).ok
 
 
 def test_param_names_order_does_not_change_the_result():
@@ -177,3 +225,50 @@ def test_param_names_order_does_not_change_the_result():
     expected = solve_ode(sird, sird.default_request())
     actual = solve_ode(reordered, sird.default_request())
     np.testing.assert_array_equal(actual.trajectories["I"], expected.trajectories["I"])
+
+
+def brain_heart_request(**kwargs):
+    spec = MODELS["brain_heart"]
+    return SimulationRequest(
+        system_name=spec.name,
+        params=dict(spec.default_params),
+        initial_conditions=dict(spec.default_initial_conditions),
+        t_span=spec.default_t_span,
+        **kwargs,
+    )
+
+
+def test_missing_input_falls_back_to_the_default_and_says_so():
+    spec = MODELS["brain_heart"]
+    run = Pipeline(verbose=False).run(spec, brain_heart_request())
+    assert run.ok, run.logs
+    assert run.result.metadata["defaulted_inputs"] == ["Psp"]
+    assert any("'Psp' not provided, using default" in line for line in run.logs)
+
+    explicit = solve_ode(spec, brain_heart_request(inputs={"Psp": psp_constant}))
+    np.testing.assert_array_equal(run.result.trajectories["P"], explicit.trajectories["P"])
+
+
+def test_provided_input_overrides_the_default():
+    spec = MODELS["brain_heart"]
+    run = Pipeline(verbose=False).run(spec, brain_heart_request(inputs={"Psp": psp_profile}))
+    default = solve_ode(spec, brain_heart_request())
+    assert run.result.metadata["defaulted_inputs"] == []
+    assert not any("using default" in line for line in run.logs)
+    assert run.result.trajectories["P"][-1] > default.trajectories["P"][-1]
+
+
+def test_missing_input_without_a_default_fails_validation():
+    spec = ODESystemSpec(
+        name="needs_input",
+        state_names=["x"],
+        param_names=["k"],
+        rhs=lambda t, y, k, u: [-k * y[0] + u(t)],
+        input_names=["u"],
+        default_params={"k": 1.0},
+        default_initial_conditions={"x0": 1.0},
+        default_t_span=(0, 1),
+    )
+    run = Pipeline(verbose=False).run(spec, spec.default_request())
+    assert not run.ok
+    assert any("Missing time-varying inputs" in line for line in run.logs)

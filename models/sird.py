@@ -35,18 +35,33 @@ def rhs(t, X, beta, gamma, mu):
     return [dSdt, dIdt, dRdt, dDdt]
 
 
+def invariants(y0, params):
+    """Initial conditions and rates must be non-negative, and I must be able to leave."""
+    problems = []
+    for key in ("S0", "I0", "R0", "D0"):
+        if y0.get(key, 0) < 0:
+            problems.append(f"Initial condition {key} must be non-negative.")
+    for key in ("beta", "gamma", "mu"):
+        if params.get(key, 0) < 0:
+            problems.append(f"Parameter {key} must be non-negative.")
+    if (params.get("gamma", 0) + params.get("mu", 0)) == 0:
+        problems.append("gamma + mu is zero: infected population never leaves the I compartment.")
+    return problems
+
+
 MODEL = ODESystemSpec(
     name="sird",
     state_names=["S", "I", "R", "D"],
     param_names=["beta", "gamma", "mu"],
     rhs=rhs,
     conserved_total=True,
+    invariant_check=invariants,
     default_params={
-        "beta": 0.3,
-        "gamma": 0.1,
+        "beta": 0.40,
+        "gamma": 0.10,
         "mu": 0.01,
     },
-    default_initial_conditions={"S0": 990.0, "I0": 10.0, "R0": 0.0, "D0": 0.0},
+    default_initial_conditions={"S0": 999990, "I0": 20, "R0": 0, "D0": 0},
     default_t_span=(0, 160),
-    default_n_points=161,
+    default_n_points=400,
 )
