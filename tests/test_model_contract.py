@@ -1,7 +1,7 @@
 """
 Every registered model must run through the whole pipeline, and the pipeline
 must handle systems unlike the registered ones. A new model is covered
-automatically once it's in MODELS.
+automatically once it's in MODELS or CATALOG.
 """
 
 import matplotlib
@@ -12,7 +12,8 @@ import numpy as np
 import pytest
 
 from models import MODELS
-from models.brain_heart import psp_constant, psp_profile
+from ode_catalog import CATALOG
+from ode_catalog.brain_heart.model import psp_constant, psp_profile
 from ode_solver import (
     ODESystemSpec,
     Pipeline,
@@ -23,8 +24,9 @@ from ode_solver import (
     validate_request,
 )
 
-SPECS = list(MODELS.values())
-IDS = list(MODELS)
+ALL_SPECS = {**MODELS, **{name: entry.spec for name, entry in CATALOG.items()}}
+SPECS = list(ALL_SPECS.values())
+IDS = list(ALL_SPECS)
 
 
 def decay_rhs(t, y, k):
@@ -233,7 +235,7 @@ def test_param_names_order_does_not_change_the_result():
 
 
 def brain_heart_request(**kwargs):
-    spec = MODELS["brain_heart"]
+    spec = ALL_SPECS["brain_heart"]
     return SimulationRequest(
         system_name=spec.name,
         params=dict(spec.default_params),
@@ -244,7 +246,7 @@ def brain_heart_request(**kwargs):
 
 
 def test_missing_input_falls_back_to_the_default_and_says_so():
-    spec = MODELS["brain_heart"]
+    spec = ALL_SPECS["brain_heart"]
     run = Pipeline(verbose=False).run(spec, brain_heart_request())
     assert run.ok, run.logs
     assert run.result.metadata["defaulted_inputs"] == ["Psp"]
@@ -255,7 +257,7 @@ def test_missing_input_falls_back_to_the_default_and_says_so():
 
 
 def test_provided_input_overrides_the_default():
-    spec = MODELS["brain_heart"]
+    spec = ALL_SPECS["brain_heart"]
     run = Pipeline(verbose=False).run(spec, brain_heart_request(inputs={"Psp": psp_profile}))
     default = solve_ode(spec, brain_heart_request())
     assert run.result.metadata["defaulted_inputs"] == []

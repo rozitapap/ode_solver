@@ -10,23 +10,13 @@ import pandas as pd
 import pytest
 
 from models import MODELS
-from models.brain_heart import psp_constant, psp_profile
+from ode_catalog import CATALOG
 from ode_solver import SimulationRequest, generate_dataset, solve_ode
 
 BASELINE = Path(__file__).parent / "baseline"
 
 
-def brain_heart_request(**kwargs):
-    spec = MODELS["brain_heart"]
-    return SimulationRequest(
-        system_name=spec.name,
-        params=dict(spec.default_params),
-        initial_conditions={"H0": 100 / 60, "P0": 90},
-        t_span=(0, 60),
-        n_points=600,
-        **kwargs,
-    )
-
+SPECS = {**MODELS, **{name: entry.spec for name, entry in CATALOG.items()}}
 
 CASES = {
     "bioprocess": ("bioprocess", MODELS["bioprocess"].default_request()),
@@ -42,18 +32,15 @@ CASES = {
     ),
     "sird_population_1000000": ("sird", MODELS["sird"].default_request()),
     "metabolite_pathway": ("metabolite_pathway", MODELS["metabolite_pathway"].default_request()),
-    "brain_heart_resting": ("brain_heart", brain_heart_request(inputs={"Psp": psp_constant})),
-    "brain_heart_setpoint_step": (
-        "brain_heart",
-        brain_heart_request(max_step=0.1, inputs={"Psp": psp_profile}),
-    ),
+    "brain_heart_resting": ("brain_heart", CATALOG["brain_heart"].request("resting")),
+    "brain_heart_setpoint_step": ("brain_heart", CATALOG["brain_heart"].request("setpoint_step")),
 }
 
 
 @pytest.mark.parametrize("name", CASES)
 def test_trajectories_match_baseline(name):
     model_name, request = CASES[name]
-    result = solve_ode(MODELS[model_name], request)
+    result = solve_ode(SPECS[model_name], request)
     assert result.success, result.message
 
     expected = pd.read_csv(BASELINE / f"{name}.csv")
