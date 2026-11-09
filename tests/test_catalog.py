@@ -56,11 +56,13 @@ def test_parameters_are_documented(entry):
 
 @pytest.mark.parametrize("entry", ENTRIES.values(), ids=IDS)
 def test_default_scenario_matches_the_spec_defaults(entry):
-    scenario = entry.scenario()
-    assert dict(scenario.initial_conditions) == dict(entry.spec.default_initial_conditions)
-    assert scenario.t_span == entry.spec.default_t_span
-    assert scenario.n_points == entry.spec.default_n_points
-    assert dict(scenario.inputs) == dict(entry.spec.default_inputs)
+    expected = entry.spec.default_request()
+    actual = entry.request()
+    assert actual.params == expected.params
+    assert actual.initial_conditions == expected.initial_conditions
+    assert actual.t_span == expected.t_span
+    assert actual.n_points == expected.n_points
+    assert set(actual.inputs) == set(entry.spec.default_inputs)
 
 
 @pytest.mark.parametrize("entry, name", SCENARIOS, ids=SCENARIO_IDS)
@@ -116,19 +118,27 @@ def test_unknown_scenario_lists_the_available_ones():
 
 def make_entry(**overrides):
     fields = {
-        "spec": TEMPLATE.spec,
-        "title": "Test",
+        "id": "test",
+        "name": "Test",
+        "version": "1.0.0",
+        "domain": "example",
+        "summary": "Test entry.",
+        "rhs": TEMPLATE.rhs,
+        "time_unit": "s",
+        "states": TEMPLATE.states,
         "parameters": TEMPLATE.parameters,
         "scenarios": TEMPLATE.scenarios,
         "default_scenario": "base_case",
-        "time_unit": "s",
-        "state_units": TEMPLATE.state_units,
     }
     return ModelEntry(**{**fields, **overrides})
 
 
 def test_valid_entry_is_accepted():
     assert make_entry().status is ModelStatus.EXECUTABLE
+
+
+def test_default_alias_gives_the_default_scenario():
+    assert TEMPLATE.scenario("default").name == TEMPLATE.default_scenario
 
 
 def test_status_names_match_the_biomodels_terms():
@@ -139,12 +149,14 @@ def test_status_names_match_the_biomodels_terms():
     ]
 
 
+K = TEMPLATE.parameters[0]
+
+
 @pytest.mark.parametrize(
     "overrides, message",
     [
-        ({"parameters": []}, "don't match spec.param_names"),
-        ({"parameters": [Parameter("k", 99.0, description="x")]}, "don't match spec.default_params"),
-        ({"state_units": {"A": "mol"}}, "state_units"),
+        ({"parameters": []}, "rhs arguments"),
+        ({"parameters": [dataclasses.replace(K, key="kk")]}, "rhs arguments"),
         ({"default_scenario": "typo"}, "isn't a scenario"),
         ({"scenarios": [TEMPLATE.scenarios[0]] * 2}, "duplicate scenario"),
         ({"status": ModelStatus.NUMERICALLY_VERIFIED}, "needs evidence"),
@@ -156,24 +168,13 @@ def test_invalid_entries_are_rejected(overrides, message):
         make_entry(**overrides)
 
 
-def test_scenario_param_overrides_apply():
-    spec = ODESystemSpec(
-        name="override",
-        state_names=["x"],
-        param_names=["k"],
-        rhs=lambda t, y, k: [-k * y[0]],
-        default_params={"k": 1.0},
+def test_scenario_overrides_apply():
+    scenario = Scenario(
+        "fast", "Faster rate.", (0, 1), initial_overrides={"A": 2.0}, param_overrides={"k": 5.0},
     )
-    entry = ModelEntry(
-        spec=spec,
-        title="Override",
-        parameters=[Parameter("k", 1.0, description="rate")],
-        scenarios=[
-            Scenario("fast", "Faster rate.", {"x0": 1.0}, (0, 1), param_overrides={"k": 5.0}),
-        ],
-        default_scenario="fast",
-        time_unit="s",
-        state_units={"x": "mol"},
-    )
-    assert entry.request().params == {"k": 5.0}
-    assert spec.default_params == {"k": 1.0}
+    entry = make_entry(scenarios=[scenario], default_scenario="fast")
+    request = entry.request()
+    assert request.params == {"k": 5.0}
+    assert request.initial_conditions == {"A0": 2.0, "B0": 0.0}
+    assert entry.spec.default_params == {"k": 5.0}
+    assert {p.key: p.default for p in entry.parameters} == {"k": 0.5}

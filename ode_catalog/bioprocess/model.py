@@ -15,8 +15,7 @@ that consumption doesn't outrun the initial Glc/Gln pools over t_span.
 See README.md in this folder for context.
 """
 
-from ode_catalog.schema import ModelEntry, ModelStatus, Parameter, Scenario
-from ode_solver.spec import ODESystemSpec
+from ode_catalog.schema import ModelEntry, ModelStatus, Parameter, Scale, Scenario, StateVariable
 
 
 def rhs(t, y, mu, qGlc, qGln, qLac, qAmm):
@@ -32,43 +31,74 @@ def rhs(t, y, mu, qGlc, qGln, qLac, qAmm):
     return [dVCDdt, dGlcdt, dGlndt, dLacdt, dAmmdt]
 
 
+STATE_BASIS = "heuristic: 0 to 10x the default"
+RATE_BASIS = "heuristic: 0.1x to 10x the default"
+
+
+def _state(key, description, initial, equation):
+    # TODO(units): no state units are recorded for this model.
+    return StateVariable(
+        key=key, symbol=rf"\mathrm{{{key}}}", description=description, unit=None, initial=initial,
+        equation=equation, ui_range=(0, 10 * initial), ui_range_basis=STATE_BASIS, lower=0,
+    )
+
+
+STATES = [
+    _state("VCD", "viable cell density", 0.5, r"\mu \mathrm{VCD}"),
+    _state("Glc", "glucose concentration", 30.0, r"-q_{\mathrm{Glc}} \mathrm{VCD}"),
+    _state("Gln", "glutamine concentration", 4.0, r"-q_{\mathrm{Gln}} \mathrm{VCD}"),
+    _state("Lac", "lactate concentration", 0.1, r"q_{\mathrm{Lac}} \mathrm{VCD}"),
+    _state("Amm", "ammonia concentration", 0.1, r"q_{\mathrm{Amm}} \mathrm{VCD}"),
+]
+
+
+def _rate(key, symbol, default, description, lower):
+    # TODO(units): no parameter units are recorded for this model.
+    return Parameter(
+        key=key, default=default, symbol=symbol, description=description, unit=None,
+        ui_range=(default / 10, default * 10), ui_range_basis=RATE_BASIS, scale=Scale.LOG,
+        lower=lower,
+    )
+
+
 PARAMETERS = [
-    Parameter("mu", 0.02, description="specific growth rate"),
-    Parameter("qGlc", 0.015, description="specific glucose consumption rate"),
-    Parameter("qGln", 0.002, description="specific glutamine consumption rate"),
-    Parameter("qLac", 0.01, description="specific lactate production rate"),
-    Parameter("qAmm", 0.001, description="specific ammonia production rate"),
+    # mu has no lower bound: a negative specific growth rate (net death) is meaningful.
+    _rate("mu", r"\mu", 0.02, "specific growth rate", lower=None),
+    _rate("qGlc", r"q_{\mathrm{Glc}}", 0.015, "specific glucose consumption rate", lower=0),
+    _rate("qGln", r"q_{\mathrm{Gln}}", 0.002, "specific glutamine consumption rate", lower=0),
+    _rate("qLac", r"q_{\mathrm{Lac}}", 0.01, "specific lactate production rate", lower=0),
+    _rate("qAmm", r"q_{\mathrm{Amm}}", 0.001, "specific ammonia production rate", lower=0),
 ]
 
 BATCH_CULTURE = Scenario(
     name="batch_culture",
     description="Batch culture over 200 time units.",
-    initial_conditions={"VCD0": 0.5, "Glc0": 30.0, "Gln0": 4.0, "Lac0": 0.1, "Amm0": 0.1},
     t_span=(0, 200),
     n_points=201,
 )
 
 ENTRY = ModelEntry(
-    spec=ODESystemSpec(
-        name="bioprocess",
-        state_names=["VCD", "Glc", "Gln", "Lac", "Amm"],
-        param_names=[parameter.name for parameter in PARAMETERS],
-        rhs=rhs,
-        description="Batch cell-culture mass balance with constant specific rates.",
-        default_params={parameter.name: parameter.value for parameter in PARAMETERS},
-        default_initial_conditions=BATCH_CULTURE.initial_conditions,
-        default_t_span=BATCH_CULTURE.t_span,
-        default_n_points=BATCH_CULTURE.n_points,
-    ),
-    title="Batch cell-culture kinetics",
+    id="bioprocess",
+    name="Batch cell-culture kinetics",
+    version="1.0.0",
+    domain="bioprocess",
+    tags=("cell culture", "mass balance"),
+    summary="Batch cell-culture mass balance with constant specific rates.",
+    rhs=rhs,
+    time_unit="h",  # TODO(units): only the time label on the model's earlier plots supports hours
+    states=STATES,
     parameters=PARAMETERS,
     scenarios=[BATCH_CULTURE],
     default_scenario="batch_culture",
-    time_unit="h",
-    state_units={"VCD": None, "Glc": None, "Gln": None, "Lac": None, "Amm": None},
     status=ModelStatus.NUMERICALLY_VERIFIED,
     evidence=(
         "Matches the exact closed-form solution within 1e-5 relative error."
     ),
-    reference=None,
+    todo=(
+        "State units (VCD, Glc, Gln, Lac, Amm) aren't recorded.",
+        "Parameter units (mu, qGlc, qGln, qLac, qAmm) aren't recorded.",
+        "Time unit 'h' comes only from the time label on earlier plots.",
+        "No source is recorded for the parameter values.",
+        "Slider ranges (ui_range) are heuristic, not from a source.",
+    ),
 )

@@ -5,8 +5,15 @@ each step first-order with rate k_i.
 See README.md in this folder for context.
 """
 
-from ode_catalog.schema import ModelEntry, ModelStatus, Parameter, Scenario
-from ode_solver.spec import ODESystemSpec
+from ode_catalog.schema import (
+    ConservedQuantity,
+    ModelEntry,
+    ModelStatus,
+    Parameter,
+    Scale,
+    Scenario,
+    StateVariable,
+)
 
 
 def rhs(t, y, k1, k2, k3, k4):
@@ -22,56 +29,66 @@ def rhs(t, y, k1, k2, k3, k4):
     return [dM1, dM2, dM3, dM4, dM5]
 
 
-def invariants(y0, params):
-    """Initial conditions and rate constants must be non-negative."""
-    problems = []
-    for key in ("M10", "M20", "M30", "M40", "M50"):
-        if y0.get(key, 0) < 0:
-            problems.append(f"Initial condition {key} must be non-negative.")
-    for key in ("k1", "k2", "k3", "k4"):
-        if params.get(key, 0) < 0:
-            problems.append(f"Rate constant {key} must be non-negative.")
-    return problems
+AMOUNT_RANGE = (0, 1000)
+AMOUNT_BASIS = "heuristic: 0 to 10x the default total amount"
+RATE_BASIS = "heuristic: 0.1x to 10x the default"
 
+EQUATIONS = [
+    r"-k_1 M_1",
+    r"k_1 M_1 - k_2 M_2",
+    r"k_2 M_2 - k_3 M_3",
+    r"k_3 M_3 - k_4 M_4",
+    r"k_4 M_4",
+]
+
+# TODO(units): no units are recorded for the amounts or the rate constants.
+STATES = [
+    StateVariable(
+        key=f"M{i}", symbol=f"M_{i}", description=f"amount of metabolite {i}", unit=None,
+        initial=100 if i == 1 else 0, equation=EQUATIONS[i - 1],
+        ui_range=AMOUNT_RANGE, ui_range_basis=AMOUNT_BASIS, lower=0,
+    )
+    for i in range(1, 6)
+]
 
 PARAMETERS = [
-    Parameter("k1", 0.50, description="rate constant of M1 -> M2"),
-    Parameter("k2", 0.30, description="rate constant of M2 -> M3"),
-    Parameter("k3", 0.20, description="rate constant of M3 -> M4"),
-    Parameter("k4", 0.10, description="rate constant of M4 -> M5"),
+    Parameter(
+        key=f"k{i}", default=default, symbol=f"k_{i}",
+        description=f"rate constant of M{i} -> M{i + 1}", unit=None,
+        ui_range=(default / 10, default * 10), ui_range_basis=RATE_BASIS, scale=Scale.LOG, lower=0,
+    )
+    for i, default in enumerate([0.50, 0.30, 0.20, 0.10], start=1)
 ]
 
 FROM_M1 = Scenario(
     name="from_m1",
     description="All of the material starts as M1.",
-    initial_conditions={"M10": 100, "M20": 0, "M30": 0, "M40": 0, "M50": 0},
     t_span=(0, 50),
     n_points=300,
 )
 
 ENTRY = ModelEntry(
-    spec=ODESystemSpec(
-        name="metabolite_pathway",
-        state_names=["M1", "M2", "M3", "M4", "M5"],
-        param_names=[parameter.name for parameter in PARAMETERS],
-        rhs=rhs,
-        description="Linear first-order chain M1 -> M2 -> M3 -> M4 -> M5.",
-        invariant_check=invariants,
-        conserved_total=True,
-        default_params={parameter.name: parameter.value for parameter in PARAMETERS},
-        default_initial_conditions=FROM_M1.initial_conditions,
-        default_t_span=FROM_M1.t_span,
-        default_n_points=FROM_M1.n_points,
-    ),
-    title="Linear metabolite pathway",
+    id="metabolite_pathway",
+    name="Linear metabolite pathway",
+    version="1.0.0",
+    domain="biochemistry",
+    tags=("mass action", "reaction chain"),
+    summary="Linear first-order chain M1 -> M2 -> M3 -> M4 -> M5.",
+    rhs=rhs,
+    time_unit=None,  # TODO(units): not recorded
+    states=STATES,
     parameters=PARAMETERS,
+    conserved_quantities=[ConservedQuantity("total material", ("M1", "M2", "M3", "M4", "M5"))],
     scenarios=[FROM_M1],
     default_scenario="from_m1",
-    time_unit=None,
-    state_units={"M1": None, "M2": None, "M3": None, "M4": None, "M5": None},
     status=ModelStatus.NUMERICALLY_VERIFIED,
     evidence=(
         "Matches the exact Bateman solution within 1e-5 relative error."
     ),
-    reference=None,
+    todo=(
+        "Time unit isn't recorded.",
+        "Amount units (M1-M5) aren't recorded.",
+        "Rate-constant units (k1-k4) aren't recorded.",
+        "Slider ranges (ui_range) are heuristic, not from a source.",
+    ),
 )
