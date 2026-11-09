@@ -23,10 +23,11 @@ from .schema import (
 )
 from .bioprocess.model import ENTRY as BIOPROCESS
 from .brain_heart.model import ENTRY as BRAIN_HEART
+from .mass_spring_damper.model import ENTRY as MASS_SPRING_DAMPER
 from .metabolite_pathway.model import ENTRY as METABOLITE_PATHWAY
 from .sird.model import ENTRY as SIRD
 
-_ENTRIES = [BIOPROCESS, BRAIN_HEART, METABOLITE_PATHWAY, SIRD]
+_ENTRIES = [BIOPROCESS, BRAIN_HEART, MASS_SPRING_DAMPER, METABOLITE_PATHWAY, SIRD]
 
 # Keyed by each entry's id, so the key can't drift from it.
 CATALOG = {entry.id: entry for entry in _ENTRIES}
